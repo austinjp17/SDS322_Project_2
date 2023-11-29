@@ -1,0 +1,139 @@
+---
+title: "Metro Bikes Report"
+output: html_document
+date: "2023-11-10"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+https://www.sciencedirect.com/science/article/pii/S1077291X22002569#:~:text=Bicycling%20supports%20public%20transport%20by,trips%20than%20possible%20by%20bike.
+
+For our research we have decided to explore the Austin Metrobikes data set to get a better understanding on the way people rely on this method of transportation throughout the city. According to Pucher and Buehler (2009), an increase in the number of available bicycle stations throughout a city increases the number of people riding bicycles but also decreases the cost of public transportation. This is due to the fact that more people are able to use bicycles to go to places out of walking distance but too close for buses to be cost effective.
+
+```{r}
+metrobikes <- read.csv("https://data.austintexas.gov/resource/tyfh-5r8s.csv?$query=SELECT%0A%20%20%60trip_id%60%2C%0A%20%20%60membership_type%60%2C%0A%20%20%60bicycle_id%60%2C%0A%20%20%60bike_type%60%2C%0A%20%20%60checkout_datetime%60%2C%0A%20%20%60checkout_date%60%2C%0A%20%20%60checkout_time%60%2C%0A%20%20%60checkout_kiosk_id%60%2C%0A%20%20%60checkout_kiosk%60%2C%0A%20%20%60return_kiosk_id%60%2C%0A%20%20%60return_kiosk%60%2C%0A%20%20%60trip_duration_minutes%60%2C%0A%20%20%60month%60%2C%0A%20%20%60year%60")
+
+library(tidyverse)
+```
+
+
+```{r}
+summary(metrobikes)
+glimpse(metrobikes)
+```
+
+
+```{r}
+metrobikes %>% 
+  filter(!complete.cases(.))
+```
+
+
+```{r}
+current_names <- names(metrobikes)
+
+# Replace underscores with periods in variable names
+new_names <- gsub("_", ".", current_names)
+new_names <- str_to_title(str_replace_all(current_names, "\\.", " "))
+
+# Assign the new names to the data frame
+names(metrobikes) <- new_names
+names(metrobikes) <- str_replace_all(new_names, " ", ".")
+
+```
+
+
+```{r}
+metrobikes %>% 
+ggplot(aes(x = membership.type , y = after_stat(count/sum(count)))) + 
+  geom_bar() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  geom_text(stat='count', aes(label=after_stat(count/sum(count)*100)), vjust=-.45)+
+  scale_y_continuous(labels = scales::percent, limits = c(0, .5))+
+    labs(x = "Membership type", 
+       y = "Percent", 
+       title  = "percentage of memberships for metrobikes rental")
+```
+
+
+```{r}
+
+```
+
+
+
+
+
+
+```{r}
+#maybe use???
+factors %>% 
+ggplot( aes(x = Month, y = Trip.Duration.Minutes, color = season)) +
+  geom_point()+
+  labs(x= "Month",
+       y = "Trip Duration in minutes")
+```
+
+
+```{r}
+# Code chunk contains newly created variables for factors data set
+
+month_labels <- c('Jan', 'Feb', 'Mar', 'Apr', 'May', "June", "July", "Aug", "Sep", "Oct", "Nov", "Dec")
+month_ord <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+factors <- metrobikes |>
+  
+  select(Trip.Duration.Minutes, Bike.Type, Month, Checkout.Time, Year) |> # Pick Relevant variables
+  
+  
+  mutate(Bike.Type = as.factor(Bike.Type)) |>
+  
+  # Season
+  mutate(season = case_when(
+      Month %in% c(12, 1, 2) ~ "Winter",
+      Month %in% c(3, 4, 5)   ~ "Spring",
+      Month %in% c(6, 7, 8)   ~ "Summer",
+      Month %in% c(9, 10, 11) ~ "Fall",
+      TRUE                    ~ NA_character_,  # for any values outside 1-12
+    )) |>
+  
+  # Hour Checked Out
+  mutate(hour = as.integer(substr(Checkout.Time, 1, regexpr(":", Checkout.Time) - 1))) |>
+  
+  # AM or PM
+  mutate(am = case_when(
+    hour < 12 ~ 1,
+    hour > 12 ~ 0,
+  ))
+
+
+  
+factors
+unique(factors$hour)
+levels(factors$Bike.Type)
+
+```
+
+
+```{r}
+# This chunk contains hour in which bikes are most used (two graphs) and regression
+
+factors |> 
+  ggplot(aes(x = hour)) +
+  geom_histogram(bins = 23) +
+  xlim(c(0, 23))
+
+factors |>
+  ggplot(aes(x = hour, y=Trip.Duration.Minutes)) +
+  geom_point()
+
+
+model <-factors |>
+lm(formula=Trip.Duration.Minutes ~ Bike.Type + season + am + Year)
+
+summary(model)
+```
+
+
