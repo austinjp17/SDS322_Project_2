@@ -1,0 +1,78 @@
+---
+title: "Project 2"
+author: "Austin Palmer | ajp4344"
+date: "2023-11-28"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+metrobikes <- read.csv("Austin_MetroBike_Trips.csv")
+names(metrobikes)
+```
+
+
+
+## Model
+
+```{r}
+month_labels <- c('Jan', 'Feb', 'Mar', 'Apr', 'May', "June", "July", "Aug", "Sep", "Oct", "Nov", "Dec")
+month_ord <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+factors <- metrobikes |>
+  
+  select(Trip.Duration.Minutes, Bike.Type, Month, Checkout.Time, Year) |> # Pick Relevant variables
+  
+  
+  mutate(Bike.Type = as.factor(Bike.Type)) |>
+  
+  # Season
+  mutate(season = case_when(
+      Month %in% c(12, 1, 2) ~ "Winter",
+      Month %in% c(3, 4, 5)   ~ "Spring",
+      Month %in% c(6, 7, 8)   ~ "Summer",
+      Month %in% c(9, 10, 11) ~ "Fall",
+      TRUE                    ~ NA_character_,  # for any values outside 1-12
+    )) |>
+  
+  # Hour Checked Out
+  mutate(hour = as.integer(substr(Checkout.Time, 1, regexpr(":", Checkout.Time) - 1))) |>
+  
+  # AM or PM
+  mutate(am = case_when(
+    hour < 12 ~ 1,
+    hour > 12 ~ 0,
+  ))
+
+
+  
+factors
+unique(factors$hour)
+levels(factors$Bike.Type)
+
+
+factors |> 
+  ggplot(aes(x = hour)) +
+  geom_histogram(bins = 23) +
+  xlim(c(0, 23))
+
+factors |>
+  ggplot(aes(x = hour, y=Trip.Duration.Minutes)) +
+  geom_point()
+
+
+model <-factors |>
+lm(formula=Trip.Duration.Minutes ~ Bike.Type + season + am + Year)
+
+summary(model)
+```
+
+
